@@ -1,6 +1,5 @@
 package com.techgeni.walletpage.presentation.screens.wallet
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -20,12 +19,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,9 +47,11 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.techgeni.walletpage.R
 import com.techgeni.walletpage.presentation.bottomSheets.addPromoCode.AddPromoCodeBottomSheet
+import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultDialog
+import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultState
 import com.techgeni.walletpage.presentation.utils.elements.CustomSwitch
 import com.techgeni.walletpage.presentation.utils.theme.FigTree
-import com.techgeni.walletpage.utils.RemoteResult
+import com.techgeni.walletpage.data.build.ktorClient.RemoteResult
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,24 +66,17 @@ fun WalletScreen(
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
     val state by viewModel.walletState.collectAsState()
+    val actionResultDialogShow by viewModel.actionResultDialogShow.collectAsState()
+
 
     LaunchedEffect(Unit) {
         viewModel.getWallet()
     }
 
-    when (val state = state) {
-        is RemoteResult.Loading -> {
-            Log.e("GetWallet", "WalletScreen: LOADING")
-            CircularProgressIndicator()
-        }
-        is RemoteResult.Success -> {
-            Log.e("GetWallet", "WalletScreen: ${state.data}")
-        }
-        is RemoteResult.Error -> {
-            Log.e("GetWallet", "WalletScreen: ${state.error}")
-        }
-        RemoteResult.Init -> {
-            Log.e("GetWallet", "WalletScreen: INITIAL")
+    DisposableEffect(Unit) {
+
+        onDispose {
+            viewModel.cancelWalletJob()
         }
     }
 
@@ -167,6 +161,15 @@ fun WalletScreen(
                 }
             )
         }
+    }
+
+    //Additional
+    ActionResultDialog(
+        isShow = actionResultDialogShow,
+        state = state,
+        onDismiss = { viewModel.hideDialog() }
+    ) {
+        viewModel.getWallet()
     }
     
     AddPromoCodeBottomSheet(

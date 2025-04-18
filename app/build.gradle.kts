@@ -89,4 +89,7 @@ dependencies {
     //Koin
     implementation("io.insert-koin:koin-android:4.0.4")
     implementation ("io.insert-koin:koin-androidx-compose:4.0.4")
+
+    //Lottie
+    implementation("com.airbnb.android:lottie-compose:6.6.6")
 }

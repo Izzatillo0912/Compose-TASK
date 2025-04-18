@@ -22,6 +22,7 @@ import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +51,14 @@ fun AddCardScreen(navController: NavController) {
     var expiryDate by remember { mutableStateOf("") }
     var cardNumberIsSelected by remember { mutableStateOf(false) }
     var expireDateIsSelected by remember { mutableStateOf(false) }
+    var backButtonEnabled by remember { mutableStateOf(true) }
+
+    DisposableEffect(Unit) {
+        backButtonEnabled = true
+        onDispose {
+            backButtonEnabled = false
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -61,7 +70,12 @@ fun AddCardScreen(navController: NavController) {
                     modifier = Modifier
                         .padding(16.dp)
                         .size(48.dp),
-                    onClick = { navController.popBackStack() }
+                    onClick = {
+                        if (backButtonEnabled) {
+                            backButtonEnabled = false
+                            navController.popBackStack()
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.width(5.dp))

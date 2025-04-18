@@ -1,9 +1,6 @@
 package com.techgeni.walletpage.data.build.ktorClient
 
 import com.techgeni.walletpage.utils.Constants
-import com.techgeni.walletpage.utils.Error
-import com.techgeni.walletpage.utils.RemoteErrorWithCode
-import com.techgeni.walletpage.utils.RemoteResult
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -14,7 +11,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
 import io.ktor.util.network.UnresolvedAddressException
-import io.ktor.utils.io.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.SerializationException
 
 class KtorApiClient(val httpClient: HttpClient) {
@@ -23,7 +20,7 @@ class KtorApiClient(val httpClient: HttpClient) {
         route: String,
         parameters: Map<String, Any> = emptyMap(),
         headers: Map<String, Any> = emptyMap(),
-    ): RemoteResult<R, Error> {
+    ): RemoteResult<R, RemoteError> {
         return safeCall {
             httpClient.get {
                 url(urlString = Constants.BASE_URL + route)
@@ -42,7 +39,7 @@ class KtorApiClient(val httpClient: HttpClient) {
         body: Any? = null,
         parameters: Map<String, Any> = emptyMap(),
         headers: Map<String, Any> = emptyMap(),
-    ): RemoteResult<M, Error> {
+    ): RemoteResult<M, RemoteError> {
         return safeCall {
             httpClient.post {
                 url(urlString = Constants.BASE_URL + route)
@@ -59,48 +56,33 @@ class KtorApiClient(val httpClient: HttpClient) {
 
     suspend inline fun <reified R> safeCall(
         execute: () -> HttpResponse
-    ): RemoteResult<R, Error> {
+    ): RemoteResult<R, RemoteError> {
 
         val response = try {
             execute()
         } catch (e: UnresolvedAddressException) {
             e.printStackTrace()
-            return RemoteResult.Error(RemoteErrorWithCode(Error.Remote.NO_INTERNET_ERROR))
+            return RemoteResult.Error(RemoteError.ConnectionError())
         } catch (e: SerializationException) {
             e.printStackTrace()
-            return RemoteResult.Error(RemoteErrorWithCode(Error.Remote.SERIALIZATION_ERROR))
+            return RemoteResult.Error(RemoteError.SerializationError())
+        } catch (e : TimeoutCancellationException) {
+            e.printStackTrace()
+            return RemoteResult.Error(RemoteError.ConnectionError())
         } catch (e: Exception) {
             e.printStackTrace()
-            if (e is CancellationException) throw e
-            return RemoteResult.Error(RemoteErrorWithCode(Error.Remote.UNKNOWN))
+            return RemoteResult.Error(RemoteError.Unknown(e.message ?: "Unknown error"))
         }
 
         return responseToResult(response)
     }
 
-    suspend inline fun <reified R> responseToResult(
-        response: HttpResponse
-    ): RemoteResult<R, Error> {
+    suspend inline fun <reified R> responseToResult(response: HttpResponse): RemoteResult<R, RemoteError> {
         return when (response.status.value) {
             in 200..299 -> RemoteResult.Success(response.body())
-            in 400..499 -> RemoteResult.Error(
-                RemoteErrorWithCode(
-                    Error.Remote.REQUEST_ERROR,
-                    response.status.value
-                )
-            )
-            in 500..599 -> RemoteResult.Error(
-                RemoteErrorWithCode(
-                    Error.Remote.SERVER_ERROR,
-                    response.status.value
-                )
-            )
-            else -> RemoteResult.Error(
-                RemoteErrorWithCode(
-                    Error.Remote.UNKNOWN,
-                    response.status.value
-                )
-            )
+            in 400..499 -> RemoteResult.Error(RemoteError.RequestError())
+            in 500..599 -> RemoteResult.Error(RemoteError.ServerError("Server ERROR : ${response.status.description} / ${response.status.value}"))
+            else -> RemoteResult.Error(RemoteError.Unknown("Unknown ERROR : ${response.status.description} / ${response.status.value}"))
         }
     }
 

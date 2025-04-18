@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.techgeni.walletpage.presentation.utils.theme.ButtonBlack
 import com.techgeni.walletpage.presentation.utils.theme.FigTree
 
 @Composable
@@ -26,7 +27,7 @@ fun SaveButton(
         enabled = enabled,
         shape = RoundedCornerShape(12.dp),
         colors = ButtonColors(
-            containerColor = Color.Black,
+            containerColor = ButtonBlack,
             contentColor = Color.White,
             disabledContainerColor = Color(0xFFD9DBE2),
             disabledContentColor = Color(0xFFA1A5B7)
