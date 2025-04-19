@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,20 +39,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.techgeni.walletpage.R
+import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultDialog
+import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultState
 import com.techgeni.walletpage.presentation.utils.buttons.CustomBackButton
 import com.techgeni.walletpage.presentation.utils.buttons.SaveButton
 import com.techgeni.walletpage.presentation.utils.masked.CreditCardVisualTransformation
 import com.techgeni.walletpage.presentation.utils.masked.ExpiryDateVisualTransformation
 import com.techgeni.walletpage.presentation.utils.theme.FigTree
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun AddCardScreen(navController: NavController) {
+fun AddCardScreen(
+    navController: NavController,
+    viewModel: AddCardViewModel = koinViewModel()
+) {
 
     var cardNumber by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf("") }
     var cardNumberIsSelected by remember { mutableStateOf(false) }
     var expireDateIsSelected by remember { mutableStateOf(false) }
+
     var backButtonEnabled by remember { mutableStateOf(true) }
+    var actionResultDialogShow by remember { mutableStateOf(false) }
+    val state by viewModel.addCardState.collectAsState()
+
 
     DisposableEffect(Unit) {
         backButtonEnabled = true
@@ -59,6 +70,15 @@ fun AddCardScreen(navController: NavController) {
             backButtonEnabled = false
         }
     }
+
+    fun postAddNewCard() {
+        viewModel.addNewCard(
+            cardNumber = cardNumber,
+            expireDate = expiryDate.substring(0, 2) + "/" + expiryDate.substring(2)
+        )
+        actionResultDialogShow = true
+    }
+
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -128,7 +148,7 @@ fun AddCardScreen(navController: NavController) {
                     modifier = Modifier.padding(start = 15.dp, end = 15.dp, bottom = 30.dp),
                     enabled = cardNumber.length == 16 && expiryDate.length == 4)
                 {
-
+                    postAddNewCard()
                 }
 
                 MyCustomKeyboards {
@@ -177,7 +197,20 @@ fun AddCardScreen(navController: NavController) {
             }
         }
     }
+
+    ActionResultDialog(
+        isShow = actionResultDialogShow,
+        states = listOf(state),
+        onDismiss = {
+            actionResultDialogShow = false
+            if (state is ActionResultState.Success) navController.popBackStack()
+        }
+    ) {
+        postAddNewCard()
+    }
 }
+
+
 
 
 

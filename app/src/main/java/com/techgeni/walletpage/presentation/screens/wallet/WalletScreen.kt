@@ -1,30 +1,22 @@
 package com.techgeni.walletpage.presentation.screens.wallet
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.LocalIndication
+import android.util.Log
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,62 +25,97 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.techgeni.walletpage.R
 import com.techgeni.walletpage.presentation.bottomSheets.addPromoCode.AddPromoCodeBottomSheet
+import com.techgeni.walletpage.presentation.bottomSheets.addPromoCode.AddPromoCodeViewModel
 import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultDialog
-import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultState
-import com.techgeni.walletpage.presentation.utils.elements.CustomSwitch
+import com.techgeni.walletpage.presentation.screens.wallet.viewModels.CardsViewModel
 import com.techgeni.walletpage.presentation.utils.theme.FigTree
-import com.techgeni.walletpage.data.build.ktorClient.RemoteResult
+import com.techgeni.walletpage.presentation.screens.wallet.viewModels.WalletViewModel
 import org.koin.androidx.compose.koinViewModel
+import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletScreen(
     navController : NavController,
-    viewModel: WalletViewModel = koinViewModel()
+    walletViewModel: WalletViewModel = koinViewModel(),
+    cardsViewModel: CardsViewModel = koinViewModel(),
+    addPromoCodeViewModel: AddPromoCodeViewModel = koinViewModel()
 ) {
 
-    var isCashEnabled by remember { mutableStateOf(true) }
-    var isCardsEnabled by remember { mutableStateOf(true) }
+    var isCashEnabled by remember { mutableStateOf(false) }
+    var isCardsEnabled by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
-    val state by viewModel.walletState.collectAsState()
-    val actionResultDialogShow by viewModel.actionResultDialogShow.collectAsState()
+    var actionResultDialogShow by remember { mutableStateOf(false) }
+    val walletState by walletViewModel.walletState.collectAsState()
+    val cardsState by cardsViewModel.cardsState.collectAsState()
+    val cards by cardsViewModel.cards.collectAsState()
+    val myWallet by walletViewModel.walletInfo.collectAsState()
+    val pagerState = rememberPagerState(initialPage = 0) { cards.size }
 
+    val animatedStartPadding by animateDpAsState(
+        targetValue = if (pagerState.currentPage == 0) 15.dp else 40.dp,
+        label = "startPadding"
+    )
+
+    val animatedEndPadding by animateDpAsState(
+        targetValue = if (pagerState.currentPage == pagerState.pageCount - 1) 15.dp else 40.dp,
+        label = "endPadding"
+    )
 
     LaunchedEffect(Unit) {
-        viewModel.getWallet()
+        actionResultDialogShow = true
+        walletViewModel.getWallet()
+        cardsViewModel.getCards()
     }
 
-    DisposableEffect(Unit) {
+    LaunchedEffect(pagerState.currentPage) {
+        cardsViewModel.selectCard(pagerState.currentPage)
+    }
 
-        onDispose {
-            viewModel.cancelWalletJob()
+    LaunchedEffect(myWallet, cards) {
+        isCashEnabled = myWallet?.activeMethod == "cash"
+        isCardsEnabled = myWallet?.activeMethod == "card"
+        Log.e("MethodChanged", "WalletScreen: $isCashEnabled / $isCardsEnabled")
+        if (!cards.any { it.isSelected } && myWallet?.activeMethod == "card") {
+            cards.forEachIndexed { index, data ->
+                if (data.id == myWallet?.activeCardId){
+                    pagerState.scrollToPage(index)
+                    cardsViewModel.selectCard(index)
+                }
+            }
         }
+        if (!cards.any { it.isSelected } && myWallet?.activeMethod == "cash") {
+            cardsViewModel.selectCard(pagerState.currentPage)
+        }
+    }
+
+    fun putPayMethod() {
+        actionResultDialogShow = true
+        Log.e("Switched", "putPayMethod: +++")
+        walletViewModel.putPayment(
+            activeMethod = if (isCashEnabled) "cash" else "card",
+            cardId = if (isCashEnabled) 0 else cards[pagerState.currentPage].id
+        )
     }
 
     // UI
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 25.dp)
+            .padding(top = 20.dp)
             .background(Color.White),
         contentAlignment = Alignment.TopStart
     ) {
         Column {
+
             Text(
                 "Wallet",
                 modifier = Modifier.padding(start = 15.dp),
@@ -97,9 +124,24 @@ fun WalletScreen(
                 fontSize = 25.sp
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalPager(
+                state = pagerState,
+                contentPadding = PaddingValues(
+                    start = animatedStartPadding,
+                    end = animatedEndPadding
+                ),
+                beyondViewportPageCount = 1,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp)
+            ) { page->
 
-            BalanceCard(modifier = Modifier.padding(horizontal = 15.dp))
+                val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
+                val scale = 1f - (pageOffset * 0.12f)
+
+
+                BalanceCard(scale = scale, data = cards[page])
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -107,7 +149,7 @@ fun WalletScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            AdditionalCard(
+            WalletAdditionalCard(
                 modifier = Modifier.padding(horizontal = 15.dp),
                 icon = R.drawable.ic_promo_code,
                 text = "Add promo code",
@@ -121,35 +163,39 @@ fun WalletScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            AdditionalCard(
+            WalletAdditionalCard(
                 modifier = Modifier.padding(horizontal = 15.dp),
                 icon = R.drawable.ic_cash,
                 text = "Cash",
                 enabledSwitch = true,
                 isChecked = isCashEnabled,
-                onCheckedChange = {isCashEnabled = it},
-                onClicked = {
-
-                }
+                onCheckedChange = {
+                    isCashEnabled = it
+                    isCardsEnabled = !it
+                    putPayMethod()
+                },
+                onClicked = {}
             )
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            AdditionalCard(
+            WalletAdditionalCard(
                 modifier = Modifier.padding(horizontal = 15.dp),
                 icon = R.drawable.ic_cards,
                 text = "Card ****7777",
                 enabledSwitch = true,
                 isChecked = isCardsEnabled,
-                onCheckedChange = {isCardsEnabled = it},
-                onClicked = {
-
-                }
+                onCheckedChange = {
+                    isCardsEnabled = it
+                    isCashEnabled = !it
+                    putPayMethod()
+                },
+                onClicked = {}
             )
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            AdditionalCard(
+            WalletAdditionalCard(
                 modifier = Modifier.padding(horizontal = 15.dp),
                 icon = R.drawable.ic_add_card,
                 text = "Add new card",
@@ -166,163 +212,22 @@ fun WalletScreen(
     //Additional
     ActionResultDialog(
         isShow = actionResultDialogShow,
-        state = state,
-        onDismiss = { viewModel.hideDialog() }
-    ) {
-        viewModel.getWallet()
+        states = listOf(walletState, cardsState),
+        onDismiss = {
+            if (walletViewModel.hideDialog() && cardsViewModel.hideDialog()) {
+                actionResultDialogShow = false
+            }
+        }
+    ) { retryRequest->
+        if (retryRequest == "getCards") cardsViewModel.getCards() else walletViewModel.getWallet()
+        actionResultDialogShow = true
     }
     
     AddPromoCodeBottomSheet(
         sheetState = sheetState,
         showBottomSheet = showBottomSheet,
+        addPromoCodeViewModel = addPromoCodeViewModel,
         onDismissRequest = { showBottomSheet = false }
-    ) {
-        
-    }
-}
-
-@Composable
-fun BalanceCard(
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(130.dp)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(Color(0xFF1B1B1B), Color(0xFF3C3C3C)),
-                    start = Offset(0f, 0f),
-                    end = Offset.Infinite
-                ),
-                shape = RoundedCornerShape(16.dp)
-            )
-            .padding(horizontal = 15.dp, vertical = 15.dp)
-    ) {
-        Column {
-            Text(
-                text = "Balance",
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "0,000.00",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Normal
-            )
-        }
-    }
-}
-
-@Composable
-fun IdentificationCard(
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(
-                color = Color.Black, width = 1.dp,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(horizontal = 15.dp, vertical = 15.dp)
-    ) {
-        Row {
-            Icon(painter = painterResource(id = R.drawable.ic_info), contentDescription = "Identification")
-            Spacer(modifier = Modifier.padding(8.dp))
-            Text(
-                text = "Identification required",
-                color = Color.Black,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Icon(painter = painterResource(id = R.drawable.ic_arrow_up), contentDescription = "")
-        }
-    }
-}
-
-@Composable
-fun AdditionalCard(
-    modifier: Modifier = Modifier,
-    icon : Int,
-    text : String,
-    enabledSwitch : Boolean,
-    isChecked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    onClicked : ()-> Unit
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .graphicsLayer {
-                shadowElevation = 1.dp.toPx() // y=1
-                shape = RoundedCornerShape(14.dp)
-                clip = false
-            }
-            .drawBehind {
-                val shadowColor = Color(0x33000000) // qora, 20% opacity
-                val cornerRadius = 10.dp.toPx()
-
-                drawRoundRect(
-                    color = shadowColor,
-                    topLeft = Offset(0f, 1.dp.toPx()), // y = 1
-                    size = Size(size.width, size.height),
-                    cornerRadius = CornerRadius(cornerRadius, cornerRadius),
-                    alpha = 1f
-                )
-            }
-            .background(
-                color = Color(0xFFF7F8FC),
-                shape = RoundedCornerShape(10.dp)
-            )
-            .clickable(
-                indication = if (enabledSwitch) null else LocalIndication.current,
-                interactionSource = remember { MutableInteractionSource() }) {
-                onClicked()
-            }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 15.dp, vertical = 15.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Cash Icon (Rasm)
-                Image(
-                    painter = painterResource(id = icon), // rasmni joylashtir
-                    contentDescription = "Cash",
-                    modifier = Modifier.size(28.dp)
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                // Cash text
-                Text(
-                    text = text,
-                    fontSize = 16.sp,
-                    color = Color.Black,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            if (enabledSwitch) {
-                CustomSwitch(
-                    onCheckedChange = onCheckedChange,
-                    checked = isChecked
-                )
-            }else {
-                Icon(painter = painterResource(id = R.drawable.ic_arrow_right), contentDescription = "")
-            }
-        }
-    }
+    )
 
 }

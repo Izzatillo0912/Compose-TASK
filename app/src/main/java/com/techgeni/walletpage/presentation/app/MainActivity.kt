@@ -1,4 +1,4 @@
-package com.techgeni.walletpage.presentation.myApp
+package com.techgeni.walletpage.presentation.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -29,7 +29,8 @@ class MainActivity : ComponentActivity() {
                     darkIcons = true // qora fon bo‘lsa false bo‘lsin
                 )
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(modifier = Modifier
+                    .fillMaxSize()) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding).background(Color.White)) {
                         MainNavGraph(navController = rememberNavController())
                     }

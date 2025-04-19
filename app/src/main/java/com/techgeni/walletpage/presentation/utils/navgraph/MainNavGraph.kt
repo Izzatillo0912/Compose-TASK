@@ -19,7 +19,7 @@ fun MainNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = "wallet"
+        startDestination = "wallet",
     ) {
         composable(
             route = "wallet",

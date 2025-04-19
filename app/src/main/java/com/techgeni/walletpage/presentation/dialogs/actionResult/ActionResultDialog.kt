@@ -1,10 +1,8 @@
 package com.techgeni.walletpage.presentation.dialogs.actionResult
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,11 +42,39 @@ import com.techgeni.walletpage.presentation.utils.theme.FigTree
 @Composable
 fun ActionResultDialog(
     isShow : Boolean,
-    state: ActionResultState,
+    states: List<ActionResultState>,
     onDismiss: () -> Unit,
-    retry: () -> Unit
+    retryRequest: (String) -> Unit
 ) {
     if (isShow) {
+
+        var mainState: ActionResultState = ActionResultState.Init
+        val isLoading = states.any { it == ActionResultState.Loading }
+        val isSuccess = states.any { it is ActionResultState.Success }
+        val isError = states.any { it is ActionResultState.Error }
+
+        if (isLoading) {
+            mainState = ActionResultState.Loading
+        }
+        else if (isSuccess) {
+
+            mainState = states.filterIsInstance<ActionResultState.Success>().firstOrNull()?.let {
+                ActionResultState.Success(it.message)
+            } ?: mainState
+
+        }
+        else if (isError) {
+
+            mainState = states.filterIsInstance<ActionResultState.Error>().firstOrNull()?.let {
+                ActionResultState.Error(it.message, it.errorType, it.retryApi)
+            } ?: mainState
+
+        }
+        else {
+            onDismiss()
+        }
+
+
         Dialog(
             onDismissRequest = { onDismiss() },
             properties = DialogProperties(
@@ -61,7 +87,7 @@ fun ActionResultDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        if (state is ActionResultState.Loading) Color.Transparent else Color(
+                        if (isLoading) Color.Transparent else Color(
                             0x40000000
                         )
                     )
@@ -77,21 +103,21 @@ fun ActionResultDialog(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
                         .fillMaxWidth(
-                            if (state is ActionResultState.Loading) 0.3f else 0.9f
+                            if (isLoading) 0.3f else 0.9f
                         )
                         .align(Alignment.Center),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (state is ActionResultState.Loading) Color(0x50000000) else Color.White
+                        containerColor = if (isLoading) Color(0x50000000) else Color.White
                     )
                 ) {
-                    when (state) {
+                    when (mainState) {
                         is ActionResultState.Loading -> LoadingDialog()
-                        is ActionResultState.Success<*> -> SuccessDialog(
-                            message = state.message,
+                        is ActionResultState.Success -> SuccessDialog(
+                            message = mainState.message,
                             onConfirm = onDismiss
                         )
-                        is ActionResultState.Error -> ErrorDialog(state = state) {
-                            if (it) retry() else onDismiss()
+                        is ActionResultState.Error -> ErrorDialog(state = mainState) {
+                            if (it) retryRequest(mainState.retryApi) else onDismiss()
                         }
                         else -> {}
                     }
@@ -121,7 +147,10 @@ private fun SuccessDialog(
     message: String,
     onConfirm: () -> Unit
 ) {
-
+    if (message.isEmpty()) {
+        onConfirm()
+        return
+    }
     val composition by rememberLottieComposition(LottieCompositionSpec.Asset("anim_checked.json"))
     val lottieAnimatable = rememberLottieAnimatable()
 
@@ -166,7 +195,10 @@ private fun ErrorDialog(
     val composition by rememberLottieComposition(LottieCompositionSpec.Asset(
         if (state.errorType == 1000) "anim_no_internet.json" else "anim_error.json"
     ))
-    val progress by animateLottieCompositionAsState(composition)
+    val progress by animateLottieCompositionAsState(
+        composition,
+        iterations = if (state.errorType == 1000) LottieConstants.IterateForever else 1
+    )
 
     Column(
         modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 15.dp),
@@ -181,7 +213,7 @@ private fun ErrorDialog(
         Text(
             modifier = Modifier.padding(top = 15.dp, bottom = 15.dp),
             textAlign = TextAlign.Center,
-            text = if (state.errorType == 1000) "No Internet or Connection is low :(" else state.message,
+            text = if (state.errorType == 1000) "Not connected, Connection error :(" else state.message,
             color = Color.Black,
             fontFamily = FigTree,
             fontSize = 15.sp,

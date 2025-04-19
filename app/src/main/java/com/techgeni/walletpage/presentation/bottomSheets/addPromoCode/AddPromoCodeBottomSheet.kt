@@ -1,17 +1,15 @@
+@file:JvmName("AddPromoCodeViewModelKt")
+
 package com.techgeni.walletpage.presentation.bottomSheets.addPromoCode
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
@@ -19,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,9 +29,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultDialog
+import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultState
 import com.techgeni.walletpage.presentation.utils.buttons.CustomBackButton
 import com.techgeni.walletpage.presentation.utils.buttons.SaveButton
 import com.techgeni.walletpage.presentation.utils.theme.FigTree
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,12 +43,21 @@ fun AddPromoCodeBottomSheet(
     sheetState: SheetState,
     showBottomSheet : Boolean,
     onDismissRequest : () -> Unit,
-    savePromo : (String) -> Unit
+    addPromoCodeViewModel: AddPromoCodeViewModel,
 ) {
+
+    val state by addPromoCodeViewModel.addPromoCodeState.collectAsState()
+    var actionResultDialogShow by remember { mutableStateOf(false) }
+    var text by remember { mutableStateOf("") }
+
+    fun sendPromoCode() {
+        addPromoCodeViewModel.addPromoCode(text)
+        actionResultDialogShow = true
+    }
 
     if (showBottomSheet) {
 
-        var text by remember { mutableStateOf("") }
+        text = ""
 
         ModalBottomSheet(
             onDismissRequest = { onDismissRequest() },
@@ -114,8 +126,20 @@ fun AddPromoCodeBottomSheet(
 
                 SaveButton(
                     modifier = Modifier.padding(bottom = 15.dp),
-                    enabled = text.isNotEmpty()) {
+                    enabled = text.isNotEmpty()
+                ) {
+                    sendPromoCode()
+                }
 
+                ActionResultDialog(
+                    isShow = actionResultDialogShow,
+                    states = listOf(state),
+                    onDismiss = {
+                        actionResultDialogShow = false
+                        if (state is ActionResultState.Success) onDismissRequest()
+                    }
+                ) {
+                    sendPromoCode()
                 }
             }
         }
