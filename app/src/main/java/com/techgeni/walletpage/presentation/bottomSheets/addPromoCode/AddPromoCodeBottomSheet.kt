@@ -34,8 +34,6 @@ import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultSta
 import com.techgeni.walletpage.presentation.utils.buttons.CustomBackButton
 import com.techgeni.walletpage.presentation.utils.buttons.SaveButton
 import com.techgeni.walletpage.presentation.utils.theme.FigTree
-import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

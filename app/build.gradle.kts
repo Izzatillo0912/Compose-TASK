@@ -74,22 +74,22 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     //SystemBars Color Change
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
+    implementation(libs.accompanist.systemuicontroller)
 
     //Ktor Client
-    implementation("io.ktor:ktor-client-core:3.1.2")
-    implementation("io.ktor:ktor-client-cio:3.1.2")
-    implementation("io.ktor:ktor-client-content-negotiation:3.1.2")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.2")
-    implementation("io.ktor:ktor-client-logging:3.1.2")
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.logging)
 
     //Json Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    implementation(libs.kotlinx.serialization.json)
 
     //Koin
-    implementation("io.insert-koin:koin-android:4.0.4")
-    implementation ("io.insert-koin:koin-androidx-compose:4.0.4")
+    implementation(libs.koin.android)
+    implementation (libs.koin.androidx.compose)
 
     //Lottie
-    implementation("com.airbnb.android:lottie-compose:6.6.6")
+    implementation(libs.lottie.compose)
 }
