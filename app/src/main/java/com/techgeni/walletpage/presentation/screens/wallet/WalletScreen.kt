@@ -224,9 +224,13 @@ fun WalletScreen(
     ) { retryRequest ->
 
         putPayMethod(retryRequest)
-        walletViewModel.getWallet(retryRequest)
-        cardsViewModel.getCards(retryRequest)
 
+        arrayListOf(cardsState, walletState).forEach {
+            if (it is ActionResultState.Error) {
+                walletViewModel.getWallet(it.retryApi)
+                cardsViewModel.getCards(it.retryApi)
+            }
+        }
         actionResultDialogShow = true
     }
     
