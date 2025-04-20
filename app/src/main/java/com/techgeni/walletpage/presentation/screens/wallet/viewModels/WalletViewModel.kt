@@ -23,22 +23,24 @@ class WalletViewModel(
     val walletInfo : StateFlow<WalletResponseModel?> = _walletInfo
 
 
-    fun getWallet() {
+    fun getWallet(retryRequest: String? = null) {
 
-        viewModelScope.launch {
-            _walletState.value = ActionResultState.Loading
+        if (retryRequest.isNullOrEmpty() || retryRequest == "getWallet") {
+            viewModelScope.launch {
+                _walletState.value = ActionResultState.Loading
 
-            when(val result = walletUseCase.getWallet()) {
-                is RemoteResult.Error -> {
-                    _walletState.value = ActionResultState.Error(
-                        message = result.error,
-                        errorType = if (result.error == "Connection Error") 1000 else 0,
-                        retryApi = "getWallet"
-                    )
-                }
-                is RemoteResult.Success -> {
-                    _walletState.value = ActionResultState.Success(message = "")
-                    _walletInfo.value = result.data
+                when(val result = walletUseCase.getWallet()) {
+                    is RemoteResult.Error -> {
+                        _walletState.value = ActionResultState.Error(
+                            message = result.error,
+                            errorType = if (result.error == "Connection Error") 1000 else 0,
+                            retryApi = "getWallet"
+                        )
+                    }
+                    is RemoteResult.Success -> {
+                        _walletState.value = ActionResultState.Success(message = "")
+                        _walletInfo.value = result.data
+                    }
                 }
             }
         }
@@ -46,23 +48,25 @@ class WalletViewModel(
 
     fun putPayment(activeMethod : String, cardId : Int) {
 
-        viewModelScope.launch {
-            _walletState.value = ActionResultState.Loading
 
-            when(val result = putPayMethodUseCase.putPayMethod(activeMethod, cardId)) {
-                is RemoteResult.Error -> {
-                    _walletState.value = ActionResultState.Error(
-                        message = result.error,
-                        errorType = if (result.error == "Connection Error") 1000 else 0,
-                        retryApi = "putPayMethod"
-                    )
-                }
-                is RemoteResult.Success -> {
-                    _walletState.value = ActionResultState.Success(message = "")
-                    _walletInfo.value = result.data
+            viewModelScope.launch {
+                _walletState.value = ActionResultState.Loading
+
+                when(val result = putPayMethodUseCase.putPayMethod(activeMethod, cardId)) {
+                    is RemoteResult.Error -> {
+                        _walletState.value = ActionResultState.Error(
+                            message = result.error,
+                            errorType = if (result.error == "Connection Error") 1000 else 0,
+                            retryApi = "putPayMethod"
+                        )
+                    }
+                    is RemoteResult.Success -> {
+                        _walletState.value = ActionResultState.Success(message = "")
+                        _walletInfo.value = result.data
+                    }
                 }
             }
-        }
+
     }
 
     fun hideDialog() : Boolean {

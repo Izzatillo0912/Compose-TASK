@@ -21,22 +21,24 @@ class CardsViewModel(
     val cards: StateFlow<List<MyCardModel>> = _cards
 
 
-    fun getCards() {
+    fun getCards(retryRequest: String? = null) {
 
-        viewModelScope.launch {
-            _cardsState.value = ActionResultState.Loading
+        if (retryRequest.isNullOrEmpty() || retryRequest == "getWallet") {
+            viewModelScope.launch {
+                _cardsState.value = ActionResultState.Loading
 
-            when(val result = cardsUseCase.getAllCards()) {
-                is RemoteResult.Error -> {
-                    _cardsState.value = ActionResultState.Error(
-                        message = result.error,
-                        errorType = if (result.error == "Connection Error") 1000 else 0,
-                        retryApi = "getCards"
-                    )
-                }
-                is RemoteResult.Success -> {
-                    _cardsState.value = ActionResultState.Success(message = "")
-                    _cards.value = result.data
+                when(val result = cardsUseCase.getAllCards()) {
+                    is RemoteResult.Error -> {
+                        _cardsState.value = ActionResultState.Error(
+                            message = result.error,
+                            errorType = if (result.error == "Connection Error") 1000 else 0,
+                            retryApi = "getCards"
+                        )
+                    }
+                    is RemoteResult.Success -> {
+                        _cardsState.value = ActionResultState.Success(message = "")
+                        _cards.value = result.data
+                    }
                 }
             }
         }

@@ -34,6 +34,7 @@ import com.techgeni.walletpage.R
 import com.techgeni.walletpage.presentation.bottomSheets.addPromoCode.AddPromoCodeBottomSheet
 import com.techgeni.walletpage.presentation.bottomSheets.addPromoCode.AddPromoCodeViewModel
 import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultDialog
+import com.techgeni.walletpage.presentation.dialogs.actionResult.ActionResultState
 import com.techgeni.walletpage.presentation.screens.wallet.viewModels.CardsViewModel
 import com.techgeni.walletpage.presentation.utils.theme.FigTree
 import com.techgeni.walletpage.presentation.screens.wallet.viewModels.WalletViewModel
@@ -97,13 +98,15 @@ fun WalletScreen(
         }
     }
 
-    fun putPayMethod() {
+    fun putPayMethod(retryRequest : String? = null) {
         actionResultDialogShow = true
-        Log.e("Switched", "putPayMethod: +++")
-        walletViewModel.putPayment(
-            activeMethod = if (isCashEnabled) "cash" else "card",
-            cardId = if (isCashEnabled) 0 else cards[pagerState.currentPage].id
-        )
+        if (retryRequest.isNullOrEmpty() || retryRequest == "putPayMethod") {
+            walletViewModel.putPayment(
+                activeMethod = if (isCashEnabled) "cash" else "card",
+                cardId = if (isCashEnabled) 0 else cards[pagerState.currentPage].id
+            )
+        }
+
     }
 
     // UI
@@ -218,8 +221,12 @@ fun WalletScreen(
                 actionResultDialogShow = false
             }
         }
-    ) { retryRequest->
-        if (retryRequest == "getCards") cardsViewModel.getCards() else walletViewModel.getWallet()
+    ) { retryRequest ->
+
+        putPayMethod(retryRequest)
+        walletViewModel.getWallet(retryRequest)
+        cardsViewModel.getCards(retryRequest)
+
         actionResultDialogShow = true
     }
     
